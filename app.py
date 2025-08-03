@@ -5,13 +5,13 @@ import numpy as np
 from PIL import Image
 
 # Load models
-model_eff = load_model("models/tree_species_model.keras")
-model_bn_old = load_model("models/best_cnn_model_plain.keras")
-model_bn_best = load_model("models/best_cnn_model_batchnorm.keras")
-model_bn_alt = load_model("models/final_cnn_batchnorm.keras")  # Use compile=False to reduce memory
-model_plain = load_model("models/final_cnn_plain.keras")
+model_eff = load_model("models/tree_species_model.keras", compile=False)
+model_bn_old = load_model("models/best_cnn_model_plain.keras", compile=False)
+model_bn_best = load_model("models/best_cnn_model_batchnorm.keras", compile=False)
+model_bn_alt = load_model("models/final_cnn_batchnorm.keras", compile=False)
+model_plain = load_model("models/final_cnn_plain.keras", compile=False)
 
-# Tree species class names (in correct order)
+# Class names
 class_names = [
     'amla', 'asopalav', 'babul', 'bamboo', 'banyan', 'bili', 'cactus', 'champa',
     'coconut', 'garmalo', 'gulmohor', 'gunda', 'jamun', 'kanchan', 'kesudo',
@@ -29,38 +29,39 @@ def preprocess_image(img_file):
     return np.expand_dims(img_array, axis=0)
 
 # Streamlit UI
-st.title("🌳 Tree Species Classifier")
-st.write("Upload a tree image to classify it using 5 different models.")
+st.title("🌳 Tree Species Classifier - Combined Model Prediction")
+st.write("Upload a tree image and get predictions from all 5 models and a final combined result.")
 
-uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
+uploaded_file = st.file_uploader("📤 Choose an image...", type=["jpg", "jpeg", "png"])
 
 if uploaded_file is not None:
     st.image(uploaded_file, caption="Uploaded Image", use_column_width=True)
     img_batch = preprocess_image(uploaded_file)
 
-    # Predictions
-    pred_eff = model_eff.predict(img_batch)
-    pred_bn_old = model_bn_old.predict(img_batch)
-    pred_bn_best = model_bn_best.predict(img_batch)
-    pred_bn_alt = model_bn_alt.predict(img_batch)
-    pred_plain = model_plain.predict(img_batch)
+    # Get predictions from all models
+    preds = [
+        model_eff.predict(img_batch),
+        model_bn_old.predict(img_batch),
+        model_bn_best.predict(img_batch),
+        model_bn_alt.predict(img_batch),
+        model_plain.predict(img_batch)
+    ]
 
-    class_eff = class_names[np.argmax(pred_eff)]
-    class_bn_old = class_names[np.argmax(pred_bn_old)]
-    class_bn_best = class_names[np.argmax(pred_bn_best)]
-    class_bn_alt = class_names[np.argmax(pred_bn_alt)]
-    class_plain = class_names[np.argmax(pred_plain)]
+    final_class = class_names[np.argmax(preds[0])]
 
-    # Optional: Guess from filename
-    suggested_label = uploaded_file.name.split("_")[0].lower()
+    # Show individual model predictions
+    st.subheader("📊 Individual Model Predictions:")
+    model_names = ["Efficient Model", "Old Plain CNN", "Best BatchNorm CNN", "Alt BatchNorm CNN", "Final Plain CNN"]
 
-    # Display results
-    st.subheader("Predicted Tree Species")
-    st.write(f"🌿 Predicte image: **{class_eff}**")
-    st.write(f"🌿 Best CNN with BatchNorm: **{class_bn_best}**")
-    st.write(f"🌿 Alternate CNN with BatchNorm: **{class_bn_alt}**")
-    st.write(f"🌿 Old CNN (Plain): **{class_bn_old}**")
-    st.write(f"🌿 Plain CNN: **{class_plain}**")
+    for i, pred in enumerate(preds):
+        pred_class = class_names[np.argmax(pred)]
+        st.write(f"🔹 {model_names[i]}: **{pred_class}**")
+
     
     st.markdown("---")
+    st.subheader("✅ Final Combined Prediction")
+    st.success(f"🌿 **Predicted Tree Species: {final_class}**")
+
+    # Optional: Suggested label from filename
+    suggested_label = uploaded_file.name.split("_")[0].lower()
     st.write(f"📂 File name suggests: **{suggested_label}**")
